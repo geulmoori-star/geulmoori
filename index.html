@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>글무리</title>
+
+  <style>
+    @font-face {
+      font-family: "냥이";
+      src: url("fonts/Cafe24Nyangi-W-v1.0.woff") format("woff"),
+           url("fonts/Cafe24Nyangi-W-v1.0.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "도스샘물";
+      src: url("fonts/DOSSaemmul.ttf") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "도스고딕";
+      src: url("fonts/DOSGothic.ttf") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    :root{
+      --ink: #1f2430;
+      --muted: rgba(31,36,48,.70);
+      --card: rgba(255,255,255,.86);
+      --line: rgba(31,36,48,.10);
+
+      --logoTop: 26px;
+      --headerH: 170px;
+      --gapUnderLogo: 100px;
+
+      --maxW: 860px;
+      --sidePad: 16px;
+      --sbw: 0px;
+
+      /* 핑크 팔레트 */
+      --pink1:#FFE4F2;
+      --pink2:#FFC4E4;
+      --pink3:#FF9FD3;
+      --pink4:#F6A9C8;
+
+      /* 별 파란색 */
+      --starBlue:#8FD3F4;
+    }
+
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; }
+
+    body{
+      margin:0;
+      font-family: "도스샘물", system-ui, sans-serif;
+      color: var(--ink);
+      background:#fff;
+      overflow: hidden;
+    }
+
+    /* ⭐ 랜덤 별 배경 레이어 */
+    #starBg{
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: #fff;
+      overflow: hidden;
+    }
+    .star{
+      position:absolute;
+      left: var(--x);
+      top: var(--y);
+      width: var(--s);
+      height: var(--s);
+      transform: rotate(var(--r));
+      pointer-events: none;
+    }
+    .star svg{ width:100%; height:100%; display:block; }
+    .star .fill{
+      fill: var(--c);
+      opacity: 1;
+      filter: blur(3px);
+    }
+
+    /* ✅ 스냅 전용 스크롤 컨테이너 (모바일 vh 보정 포함) */
+    .snapWrap{
+      height: 100vh;
+      height: 100dvh;            /* ✅ 모바일 주소창 vh 이슈 보정 */
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      overscroll-behavior-y: contain;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ✅ 스냅되는 섹션(한 페이지)
+       - height:100vh 고정 때문에 내용이 잘려서 스크롤이 막혔음
+       - min-height로 바꿔서 내용 많으면 아래로 늘어나게!
+    */
+    .snapSection{
+      min-height: 100vh;
+      min-height: 100dvh;        /* ✅ 모바일 보정 */
+      height: auto;              /* ✅ 내용 늘어나면 확장 */
+
+      display:flex;
+      justify-content:center;
+      align-items: flex-start;
+
+      padding-top: calc(var(--logoTop) + var(--headerH) + var(--gapUnderLogo));
+      padding-left: var(--sidePad);
+      padding-right: var(--sidePad);
+
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      position: relative; /* 삼각형 absolute 기준 */
+      padding-bottom: 90px; /* ✅ 삼각형/여백 때문에 맨 아래 잘리는 것 방지 */
+    }
+
+    .container{
+      width: 100%;
+      max-width: var(--maxW);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      padding: 28px 22px 22px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 70px rgba(0,0,0,.10);
+      text-align: center;
+    }
+
+    h1{
+      margin: 0 0 10px;
+      font-family: system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+      font-size: 36px;
+      letter-spacing: -0.4px;
+    }
+
+    /* ✅ 로고 박스 */
+    .logoFrame{
+      position: fixed;
+      top: var(--logoTop);
+      left: 50%;
+      transform: translateX(calc(-50% - (var(--sbw) / 2)));
+      z-index: 10;
+
+      width: min(var(--maxW), calc(100vw - (var(--sidePad) * 2)));
+      height: var(--headerH);
+
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 70px rgba(0,0,0,.10);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      pointer-events: none;
+    }
+    .logo{ text-align:center; }
+
+    #logo-main{
+      font-family: "도스샘물", system-ui, sans-serif;
+      font-size: 68px;
+      letter-spacing: 3px;
+      color: #ffffff;
+    }
+    .logo-tip{
+      font-family: "도스샘물", sans-serif;
+      font-size: 12px;
+      margin-top: 16px;
+      color: rgba(15, 18, 23, 0.667);
+    }
+
+    .title-main{ font-family: "도스샘물", sans-serif; }
+
+    .sub{
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .btnRow{
+      display:flex;
+      justify-content:center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    /* ✅ 버튼 통일 */
+    button, .gbtn{
+      position: relative;
+      overflow: hidden;
+      padding: 14px 24px;
+      font-size: 15px;
+      border-radius: 28px;
+      border: none;
+      cursor: pointer;
+      color: #1f2430;
+      font-family: "도스샘물", system-ui, sans-serif;
+      font-weight: 570;
+
+      box-shadow:
+        0 0 0 0.6px rgba(0,0,0,0.16),
+        inset 0 2px 0 rgba(255,255,255,0.9),
+        inset 0 0 0 1px rgba(255,255,255,0.35),
+        inset 0 10px 18px rgba(255,255,255,0.35),
+        inset 0 -28px 40px rgba(0,0,0,0.20),
+        0 10px 22px rgba(0,0,0,0.16);
+      transition: all .18s ease;
+
+      display: inline-block;
+      text-decoration: none;
+    }
+    button:hover, .gbtn:hover{ transform: translateY(-3px); }
+    button:active, .gbtn:active{ transform: translateY(1px); }
+
+    button::before, .gbtn::before{
+      content: "";
+      position: absolute;
+      left: 5%;
+      top: 3%;
+      width: 90%;
+      height: 40%;
+      background: linear-gradient(
+        180deg,
+        rgba(255, 254, 248, 0.98) 0%,
+        rgba(255, 254, 248, 0.75) 25%,
+        rgba(255, 254, 248, 0.30) 55%,
+        rgba(255, 254, 248, 0.05) 80%,
+        rgba(255, 254, 248, 0.00) 100%
+      );
+      border-radius: 999px;
+      filter: blur(0.5px);
+      opacity: 0.55;
+      pointer-events: none;
+      transition: transform .18s ease, opacity .18s ease;
+    }
+    button:hover::before, .gbtn:hover::before{
+      transform: translateY(-2px);
+      opacity: 0.92;
+    }
+
+    .btn-yellow{
+      background: linear-gradient(180deg,#fffad9 0%,#fff2a8 28%,#ffe67f 72%,#ffdd66 100%);
+      box-shadow: 0 0 8px rgba(255, 223, 120, 0.45);
+    }
+    .btn-green{
+      background: linear-gradient(180deg,#efffe8 0%,#d6ffb8 28%,#b7f58b 72%,#9eea6c 100%);
+      box-shadow: 0 0 8px rgba(160, 235, 130, 0.45);
+    }
+    .btn-blue{
+      background: linear-gradient(180deg,#eff8ff 0%,#d6efff 28%,#a8deff 72%,#88cfff 100%);
+      box-shadow: 0 0 8px rgba(150, 210, 255, 0.45);
+    }
+    .btn-pink{
+      background: linear-gradient(
+        180deg,
+        var(--pink1) 0%,
+        var(--pink2) 30%,
+        var(--pink3) 70%,
+        #FF88C8 100%
+      );
+      box-shadow:
+        0 0 6px rgba(246,169,200,0.30),
+        0 0 0 0.6px rgba(0,0,0,0.14),
+        inset 0 1px 0 rgba(255,255,255,0.55),
+        inset 0 0 0 1px rgba(255,255,255,0.25),
+        inset 0 8px 14px rgba(255,255,255,0.25),
+        inset 0 -20px 32px rgba(0,0,0,0.16),
+        0 8px 18px rgba(0,0,0,0.12);
+    }
+
+    /* =========================
+       ✅ 삼각형(다음 페이지 유도) - 카드 밖(페이지 바닥)
+    ========================= */
+    #home{ position: relative; }
+
+    #home .nextHint{
+      position: absolute;
+      left: 50%;
+      bottom: 26px;
+      transform: translateX(-50%);
+      width: 96px;
+      height: 52px;
+
+      border: 0;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      z-index: 12;
+
+      border-radius: 0;
+      box-shadow: none;
+      overflow: visible;
+
+      animation: bobHint 1.8s ease-in-out infinite;
+      transition: transform .18s ease, opacity .18s ease;
+    }
+    #home .nextHint .hintSvg{ width: 100%; height: 100%; display: block; }
+    #home .nextHint::before, #home .nextHint::after{ content: none !important; }
+
+    #home .nextHint:hover{ transform: translateX(-50%) translateY(2px); }
+    #home .nextHint:active{ transform: translateX(-50%) translateY(4px); }
+
+    #home .nextHint.isHidden{
+      opacity: 0;
+      pointer-events: none;
+      animation-play-state: paused;
+      transform: translateX(-50%) translateY(10px);
+    }
+
+    @keyframes bobHint{
+      0%,100%{ transform: translateX(-50%) translateY(0); }
+      50%{    transform: translateX(-50%) translateY(6px); }
+    }
+
+    @media (max-width: 520px){
+      :root{
+        --logoTop: 16px;
+        --headerH: 130px;
+        --gapUnderLogo: 60px;
+      }
+      h1{ font-size: 30px; }
+      #logo-main{ font-size: 52px; }
+      #home .nextHint{ width: 86px; height: 48px; bottom: 18px; }
+      .snapSection{ padding-bottom: 110px; } /* ✅ 모바일에서 더 여유 */
+    }
+
+    .section{
+      margin-top: 14px;
+      border-top: 1px dashed rgba(31,36,48,.12);
+      padding-top: 14px;
+      text-align:center;
+    }
+
+    /* ✅ 글감 랜덤 뽑기(hover 시 파란색으로!) */
+    .miniLabel.tooltip{
+      margin:0 0 8px;
+      color: rgba(19, 22, 30, 0.74);
+      font-size: 15px;
+      text-decoration: none;
+      text-underline-offset: 4px;
+      transition: color .18s ease, text-shadow .18s ease;
+    }
+    #home .miniLabel.tooltip:hover{
+      color: var(--starBlue);
+      text-shadow: 0 0 10px rgba(143,211,244,.45);
+    }
+
+    /* ✅ 아이콘 */
+    .tipIcon{
+      font-size: 12px;
+      opacity: .55;
+      transform: translateY(-0.5px);
+      transition: opacity .18s ease, transform .18s ease, color .18s ease;
+    }
+    #home .miniLabel.tooltip:hover .tipIcon{
+      opacity: 1;
+      transform: translateY(-0.5px) scale(1.08);
+      color: var(--starBlue);
+    }
+
+    .promptPreview{
+      margin:0 0 10px;
+      font-size: 16px;
+      line-height: 1.6;
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(31,36,48,.10);
+      background: rgba(255,255,255,.90);
+      display:inline-block;
+      max-width: 100%;
+    }
+
+    /* MODAL */
+    .modal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.35);
+      z-index: 50;
+      padding: 18px;
+    }
+    .modal-content{
+      width: min(900px, 96vw);
+      height: min(80vh, 760px);
+      margin: 7vh auto 0;
+      padding: 18px 18px 16px;
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(31,36,48,.12);
+      border-radius: 28px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.20);
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .modalTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .modalTop h2{ margin:0; font-size: 16px; }
+
+    .xBtn{
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(31,36,48,.12);
+      background: rgba(255,255,255,.95);
+      cursor: pointer;
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+      color: #1f2430;
+
+      box-shadow:
+        0 10px 22px rgba(0,0,0,0.12),
+        inset 0 2px 0 rgba(255,255,255,0.9);
+    }
+    .xBtn::before{ content: none !important; }
+
+    .modalSub{
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .promptTitle{
+      border-radius: 18px;
+      border: 1px solid rgba(31,36,48,.12);
+      padding: 10px 12px;
+      background: rgba(255,255,255,.92);
+      font-size: 14px;
+      text-align: left;
+    }
+    textarea{
+      width:100%;
+      flex: 1;
+      border-radius: 20px;
+      border: 1px solid rgba(31,36,48,.16);
+      padding: 16px;
+      font-size: 15px;
+      line-height: 1.85;
+      outline: none;
+      background: rgba(255,255,255,.92);
+      resize: none;
+
+      font-family: "도스고딕", monospace;
+      caret-color: #F6A9C8;
+    }
+    textarea:focus{
+      border-color: rgba(31,36,48,.28);
+      box-shadow: 0 0 0 4px rgba(31,36,48,.08);
+    }
+    textarea::selection{ background: rgba(246,169,200,0.35); }
+
+    .modalBtns{
+      display:flex;
+      justify-content:center;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+
+    .questionBox{
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(31,36,48,.10);
+      background: rgba(255,255,255,.92);
+    }
+
+    .todayQuestion{
+      margin: 18px 0 0;
+      font-size: 18px;
+      line-height: 1.8;
+      color: rgba(31,36,48,.85);
+    }
+
+    .tooltip{
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: help;
+    }
+
+    .tooltipText{
+      position: absolute;
+      bottom: 135%;
+      left: 50%;
+      transform: translateX(-50%) translateY(2px);
+
+      background: rgba(31,36,48,.92);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      white-space: nowrap;
+
+      opacity: 0;
+      pointer-events: none;
+      transition: all .2s ease;
+      z-index: 30;
+    }
+    .tooltipText::after{
+      content:"";
+      position:absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: rgba(31,36,48,.92);
+    }
+    .tooltip:hover .tooltipText{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    .promptStack{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* 🌿 봄 질문 스타일 */
+    .todayQuestion.spring{
+      color: #6c9a35;
+      text-shadow: 0 0 8px rgba(95,174,123,0.25);
+    }
+
+    /* 오늘의 질문 아이콘: 핑크 동그라미 없이 글감처럼 */
+    #about .qTipIcon{
+      font-size: 12px;
+      opacity: .55;
+      transform: translateY(-0.5px);
+      transition: opacity .18s ease, transform .18s ease, color .18s ease;
+    }
+    #about .miniLabel.tooltip:hover{
+      color: var(--pink4);
+      text-shadow: 0 0 10px rgba(246,169,200,.35);
+    }
+    #about .miniLabel.tooltip:hover .qTipIcon{
+      opacity: 1;
+      transform: translateY(-0.5px) scale(1.08);
+      color: var(--pink4);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="starBg" aria-hidden="true"></div>
+
+  <div class="logoFrame" aria-hidden="true">
+    <div class="logo">
+      <div id="logo-main">(geulmoori)</div>
+      <div class="logo-tip">TIP! 새로고침을 하면 배경이 변해요 ♪(´▽｀)</div>
+    </div>
+  </div>
+
+  <div class="snapWrap">
+    <!-- ✅ 1페이지 -->
+    <section class="snapSection" id="home">
+      <div class="container">
+        <h1 class="title-main">글무리</h1>
+
+        <p class="sub">
+          글쓰기를 사랑하는 마음을 잃지 않기를! <br/>
+          글무리는 같은 주제로 쓰고, 함께 읽고, 나누는 글쓰기 소모임입니다.
+        </p>
+
+        <div class="btnRow">
+          <button class="btn-yellow" onclick="openFree()">빈 노트 열기</button>
+          <button class="btn-green" onclick="openPrompt()">글감 뽑고 쓰기</button>
+        </div>
+
+        <div class="section">
+          <div class="promptStack">
+            <p class="miniLabel tooltip">
+              글감 랜덤 뽑기 <span class="tipIcon" aria-hidden="true">ⓘ</span>
+              <span class="tooltipText">
+                글무리의 다양한 글감 중 하나를 랜덤으로 뽑아보세요（￣︶￣）↗
+              </span>
+            </p>
+            <div class="promptPreview" id="promptPreview">—</div>
+          </div>
+
+          <div class="btnRow" style="margin:10px 0 0;">
+            <button class="btn-blue" onclick="pickOnly()">다시 뽑기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ 삼각형: 카드 밖(섹션 바닥) -->
+      <button class="nextHint" id="nextHint" type="button" aria-label="다음 페이지로" onclick="goNext()">
+        <svg class="hintSvg" viewBox="0 0 120 70" aria-hidden="true" focusable="false">
+          <defs>
+            <filter id="triFx" x="-40%" y="-40%" width="180%" height="200%" filterUnits="objectBoundingBox">
+              <feDropShadow dx="0" dy="0" stdDeviation="3.5" flood-color="#F6A9C8" flood-opacity="0.55"/>
+            </filter>
+
+            <linearGradient id="pinkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0"    stop-color="#FFD7EA"/>
+              <stop offset="0.35" stop-color="#FF9FCC"/>
+              <stop offset="0.72" stop-color="#FF7BC0"/>
+              <stop offset="1"    stop-color="#F6A9C8"/>
+            </linearGradient>
+
+            <linearGradient id="shineGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffffff" stop-opacity="0.90"/>
+              <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <path d="M16 14
+                   Q12 14 14 18
+                   L56 60
+                   Q60 64 64 60
+                   L106 18
+                   Q108 14 104 14
+                   Z"
+                   fill="url(#pinkGrad)" filter="url(#triFx)"/>
+
+          <path d="M22 18
+                   Q20 18 22 22
+                   L57 50
+                   Q60 53 63 50
+                   L98 22
+                   Q100 18 98 18
+                   Z" fill="url(#shineGrad)" opacity="0.65"/>
+        </svg>
+      </button>
+    </section>
+
+    <!-- ✅ 2페이지 -->
+    <section class="snapSection" id="about">
+      <div class="container" id="aboutPage">
+        <h1 class="title-main">글무리 소개</h1>
+
+        <p class="sub">
+          누구나 글쓰기를 부담없이 하기를 바라는 마음을 바탕으로 활동합니다!<br/>
+          글무리의 활동은 인스타와 블로그에서 확인하실 수 있어요 (^///^) <br/>
+          ♪ 글무리 가입 신청은 아래의 신청하기 버튼을 통해 가능합니다 ♪
+        </p>
+
+        <div class="btnRow">
+          <a class="gbtn btn-blue" href="https://instagram.com/geul.uri/" target="_blank" rel="noopener">★ 인스타 ★</a>
+          <a class="gbtn btn-green" href="https://blog.naver.com/geulmoori" target="_blank" rel="noopener">☆ 블로그 ☆</a>
+          <a class="gbtn btn-yellow" href="https://forms.gle/gze2QosxjBKnoNLv9" target="_blank" rel="noopener">⁑ 신청하기 ⁑</a>
+        </div>
+
+        <div class="questionBox">
+          <p class="miniLabel tooltip">
+            오늘의 질문
+            <span class="qTipIcon" aria-hidden="true">ⓘ</span>
+            <span class="tooltipText">
+              글무리 질문 목록 중 하나가 랜덤으로 나타납니다.
+              계절 질문은 특별한 색으로 표시돼요 🌿
+            </span>
+          </p>
+
+          <p class="todayQuestion" id="todayQuestion">—</p>
+
+          <div class="btnRow" style="margin-top:24px;">
+            <button class="btn-pink" onclick="pickQuestion()">다른 질문 보기</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 1) 자유 메모장 모달 -->
+  <div class="modal" id="modalFree">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-label="자유 메모장">
+      <div class="modalTop">
+        <h2>빈 노트</h2>
+        <button class="xBtn" onclick="closeFree()" aria-label="닫기">✕</button>
+      </div>
+      <p class="modalSub">(^_-)b 마음 가는 대로 글을 써봐 ✧ </p>
+      <textarea id="freeArea" spellcheck="false" placeholder="여기에 글을 써보세요. 글은 저장되지 않으니 조심하세요…"></textarea>
+      <div class="modalBtns">
+        <button class="btn-pink" onclick="closeFree()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2) 글감 메모장 모달 -->
+  <div class="modal" id="modalPrompt">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-label="글감 메모장">
+      <div class="modalTop">
+        <h2>글감 메모장</h2>
+        <button class="xBtn" onclick="closePrompt()" aria-label="닫기">✕</button>
+      </div>
+
+      <div class="promptTitle" id="promptTitle">—</div>
+      <p class="modalSub">(＠＾０＾) 마음에 드는 글감을 뽑아봐 ♪ </p>
+      <textarea id="promptArea" spellcheck="false" placeholder="여기에 글을 써보세요. 글은 저장되지 않으니 조심하세요…"></textarea>
+
+      <div class="modalBtns">
+        <button class="btn-blue" onclick="repick()">다시 뽑기</button>
+        <button class="btn-pink" onclick="closePrompt()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setScrollbarWidthVar(){
+      const wrap = document.querySelector(".snapWrap");
+      if(!wrap) return;
+      const sbw = wrap.offsetWidth - wrap.clientWidth;
+      document.documentElement.style.setProperty("--sbw", sbw + "px");
+    }
+    setScrollbarWidthVar();
+    window.addEventListener("resize", () => {
+      clearTimeout(window.__sbwTimer);
+      window.__sbwTimer = setTimeout(setScrollbarWidthVar, 50);
+    });
+
+    const STAR_COLORS = ["#F6A9C8","#AEEA8F","#F6E58A","#8FD3F4"];
+    function rand(min, max){ return Math.random() * (max - min) + min; }
+
+    function generateStarBackground(){
+      const bg = document.getElementById("starBg");
+      if(!bg) return;
+      bg.innerHTML = "";
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      const total = vw < 600 ? 14 : 22;
+      const bigCount = Math.round(total * 0.58);
+      const midCount = Math.round(total * 0.30);
+      const smallCount = total - bigCount - midCount;
+
+      const sizes = [
+        ...Array(bigCount).fill(0).map(() => rand(170, 280)),
+        ...Array(midCount).fill(0).map(() => rand(70, 110)),
+        ...Array(smallCount).fill(0).map(() => rand(18, 30)),
+      ].sort((a,b) => b-a);
+
+      const placed = [];
+      const maxAttemptsPerStar = 180;
+
+      for (const size of sizes){
+        for (let attempt=0; attempt<maxAttemptsPerStar; attempt++){
+          const margin = size * 0.60;
+          const xMin = Math.max(0, margin);
+          const xMax = Math.max(0, vw - margin);
+          const yMin = Math.max(0, margin);
+          const yMax = Math.max(0, vh - margin);
+
+          const x = rand(xMin, xMax);
+          const y = rand(yMin, yMax);
+
+          const minDist = size * 0.78 + 26;
+
+          let ok = true;
+          for (const p of placed){
+            const dx = x - p.x;
+            const dy = y - p.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < (minDist + p.minDist)){ ok = false; break; }
+          }
+          if(!ok) continue;
+
+          placed.push({ x, y, minDist });
+
+          const star = document.createElement("div");
+          star.className = "star";
+
+          const rotate = Math.floor(rand(0, 360)) + "deg";
+          const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+
+          star.style.setProperty("--s", size + "px");
+          star.style.setProperty("--x", x + "px");
+          star.style.setProperty("--y", y + "px");
+          star.style.setProperty("--r", rotate);
+          star.style.setProperty("--c", color);
+
+          star.innerHTML = `
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <path class="fill"
+                d="M50 6 L61 36 L93 36 L67 54 L77 86 L50 68 L23 86 L33 54 L7 36 L39 36 Z"></path>
+            </svg>
+          `;
+          bg.appendChild(star);
+          break;
+        }
+      }
+    }
+
+    generateStarBackground();
+    window.addEventListener("resize", () => {
+      clearTimeout(window.__starTimer);
+      window.__starTimer = setTimeout(generateStarBackground, 220);
+    });
+
+    const PROMPTS = ["죽어가는 화초에게","푸른 빛으로 반짝이는 어느 바다에서","선인장, 소금, 호텔","헛된 희망입니까?","낮잠","눈보라","미안합니다, 미안해요.","구애","도망치기","off the record","\"날씨가 더운 것 같다\"","영원","지구가 멸망하던 날","왜?","쨍그랑!","성장통","완벽","헛소문","그리고 아무도 없었다","아, 그는 숨을 내뱉었다.","짝사랑","구원","저건 가짜 묘지야.","그믐달","아카시아 숲","폭설","마법의 물약","속의 바다","미래의 눈물","내일의 나","우산과 우정","어제","나쁜 꿈을 꿨다.","냉장고 속 푸딩","난도질","해파리는 심장이 없다","여름","먹구름","종이배가 가라앉았다.","유월","눈동자","기억","유리 새","후유증","고요한 사건","복숭아를 닮은 사랑","오늘은 날씨가 너무 좋아서","레몬","소나기","장마","별","환상","행복","보라색이다.","선풍기","락스타와 노벨상","13월","할아버지로 변하는 전염병","카피바라","우산은 말라있어요","너를 오래된 선풍기처럼 아껴","행복은 도피여야 해","마음의 농도","무화과 숲","멸종 위기 사랑","아! 샷! 추!","할 일","커다란 검정색","가장 낮은 천장 이야기","금 간 LP","제가 용기가 없어서요","기억을 허무는 일","우주에 빠져 죽는 꿈","필기의 파동과 잔 속의 요동","시린 시","율이에게","물에 빠지는 것","민들레 알러지","유리 같은 그믐","그것 또한 왈츠의 일부라면","우주를 담은 동공의 하얀 아지랑이","고작 두 음절이","그 잔별 아무별","까만 리본을 묶었다.","흑백의 바다에도 물결은 있다지만","증발","하늘이 떨어져 내린다","오늘이 마지막일 것 같아","생일축하해","아픔과 치유는 하나입니다","영원, 모래, 바다","체향","마음 한 켠 찝찝함만 남기고","토마토","어항","무너져도 다시,","당신에게 사랑은 무엇인가요?"];
+
+    function randomPrompt(){ return PROMPTS[Math.floor(Math.random()*PROMPTS.length)]; }
+    function setPreview(p){ document.getElementById("promptPreview").innerText = p; }
+    function setPromptTitle(p){ document.getElementById("promptTitle").innerText = p; }
+
+    function openFree(){
+      document.getElementById("modalFree").style.display = "block";
+      setTimeout(() => document.getElementById("freeArea").focus(), 30);
+    }
+    function closeFree(){ document.getElementById("modalFree").style.display = "none"; }
+
+    function openPrompt(){
+      const p = randomPrompt();
+      setPromptTitle(p);
+      document.getElementById("modalPrompt").style.display = "block";
+      setTimeout(() => document.getElementById("promptArea").focus(), 30);
+    }
+    function repick(){ setPromptTitle(randomPrompt()); }
+    function closePrompt(){ document.getElementById("modalPrompt").style.display = "none"; }
+    function pickOnly(){ setPreview(randomPrompt()); }
+
+    setPreview(randomPrompt());
+
+    window.addEventListener("keydown", (e) => {
+      if(e.key === "Escape"){ closeFree(); closePrompt(); }
+    });
+
+    document.getElementById("modalFree").addEventListener("click", (e) => {
+      if(e.target.id === "modalFree") closeFree();
+    });
+    document.getElementById("modalPrompt").addEventListener("click", (e) => {
+      if(e.target.id === "modalPrompt") closePrompt();
+    });
+
+    const LOGO_COLORS = ["#F6A9C8","#AEEA8F","#F6E58A","#8FD3F4"];
+    const logo = document.getElementById("logo-main");
+    if (logo) {
+      const randomColor = LOGO_COLORS[Math.floor(Math.random() * LOGO_COLORS.length)];
+      logo.style.color = randomColor;
+      logo.style.webkitTextStroke = "0.5px #222";
+    }
+
+    function goNext(){
+      const wrap = document.querySelector(".snapWrap");
+      if(!wrap) return;
+      wrap.scrollBy({ top: window.innerHeight, left: 0, behavior: "smooth" });
+    }
+
+    (function setupNextHint(){
+      const wrap = document.querySelector(".snapWrap");
+      const hint = document.getElementById("nextHint");
+      if(!wrap || !hint) return;
+
+      const THRESHOLD = 12;
+
+      function update(){
+        const y = wrap.scrollTop;
+        const onFirst = y < (window.innerHeight * 0.5);
+        const hideNow = y > THRESHOLD;
+
+        if(onFirst && !hideNow) hint.classList.remove("isHidden");
+        else hint.classList.add("isHidden");
+      }
+
+      wrap.addEventListener("scroll", update, { passive: true });
+      window.addEventListener("resize", update);
+      update();
+    })();
+
+    const QUESTIONS = [
+      "왜 글쓰기를 시작했나요?",
+      "완성하지 못한 이야기가 있나요?",
+      "자주 떠오르는 장면이 있나요?",
+      "결말을 먼저 떠올리는 편인가요?",
+      "그 문장을 쓰기까지 얼마나 망설였나요?",
+      "무엇을 말하지 않기 위해 글을 쓰나요?",
+      "지금 당장 쓰고 싶은 하나의 단어가 있다면?",
+      "상상은 언제 시작될까요?",
+      "제목이 먼저일까, 내용이 먼저일까.",
+      "그 글을 쓰다 멈춘 이유는 무엇이었나요?",
+      "당신의 문장은 어떤 목소리를 가졌나요?",
+      "왜 그 이야기를 써야 했나요?",
+      "가장 오래 붙잡은 문장은 누구였나요?",
+      "침묵을 쓰는 방법은 무엇일까요?",
+      "갈등을 좋아하세요?",
+      "글을 쓸 때 가장 무서운 순간은요?",
+      "당신의 이야기는 어디에서 출발했나요?",
+      "이해할 수 없는 인물은 어떤 인물인가요?",
+      "용서를 글로 쓰는 방법은 무엇일까요?",
+      "글로 구원을 말해본 적 있나요?",
+      "행복을 믿으세요?",
+      "왜 아직도 글을 쓰나요?",
+      "아끼는 단어가 있나요?",
+      "당신의 글은 당신을 닮았나요?",
+      "무엇을 고치지 않기로 했나요?",
+      "가장 쓰기 어려운 것은요?",
+      "다음 문장을 기다리고 있나요?",
+      "최근 읽은 문장 중 기억나는 것이 있나요?",
+      "글을 쓸 때 음악을 들으세요?",
+      "글이 가장 잘 써지는 시간은 언제일까요?",
+      "어디에서 글을 쓰나요?",
+      "가장 오래 걸린 글은 무엇이었나요?",
+      "글을 공유하는 것이 어렵나요?(어렵다면 글무리로 오세요 ㅎ.ㅎ)",
+      "메모를 자주 남기나요?",
+      "인쇄된 글을 좋아하세요?",
+      "가장 많이 쓰는 단어는 무엇인가요?",
+      "문장이 턱 막히면 어떻게 하나요?",
+      "영감을 얻는 곳은?",
+      "카페인은 글쓰기에 도움이 될까요?",
+      "오래된 글을 다시 읽는 편인가요?",
+      "사랑을 믿으세요?",
+      "가장 애정하는 접속사는 무엇인가요?",
+      "당신의 글에서 빠져나오지 못한 적이 있나요? 얼마나 오래 헤엄쳤나요!",
+      "가장 먼저 떠오르는 단어는 무엇인가요?",
+      "그 단어는 무슨 맛이에요?",
+      "사람들이 말하길 글 쓰는 건 어떤 일인가요?",
+      "당신이 생각하길 글 쓰는 건 어떤 일인가요?",
+      "당신이 애정하는 타인과 당신의 글은 비슷한가요?",
+      "글을 쓰기에 가장 좋은 계절은 언제인가요?",
+      "초고와 퇴고 중 어떤 쪽을 더 좋아하세요?",
+      "당신의 글을 좋아하세요?",
+      "당신의 문장이 사람이라면 몇 살일까요?",
+      "그 문장은 어떤 색인가요?",
+      "바다인가요, 숲인가요?",
+      "춤을 추는 문장은 어떤 문장인가요?",
+      "그 문장은 어떤 향이 나나요?",
+      "당신의 문장은 햇빛을 좋아하나요?",
+      "당신의 문장은 우산을 들고 다니나요?",
+      "당신의 글은 지금 어디에 있나요?",
+      "딱 한 문장만 쓸 수 있다면?",
+      "어떤 문장에 질투가 나나요?",
+      "현실 vs 환상",
+      "왜 계속 써야만 했나요?",
+      "글을 쓰다 울어본 적이 있나요?",
+      "글을 쓰다 도망친 적 있나요?"
+    ];
+
+    const SPRING_QUESTIONS = [
+      "새로 시작하고 싶은 문장이 있나요?",
+      "글에도 봄이 올까요?",
+      "아직 피지 않은 이야기가 있다면?",
+      "겨울의 멈춘 이야기를 이어갈 수 있나요?",
+      "설렘은 어떤 문장인가요?",
+      "봄의 색은 어떤가요?",
+      "당신의 글은 겨울을 끝냈나요?",
+      "지금 시작하지 않으면 안 될 문장은?",
+      "봄바람에도 흔들리는 마음은 어떤 마음일까요?",
+      "봄은 정말로 시작일까요?",
+      "꽃을 꺾어주는 사람vs지켜보기만 하는 사람",
+      "계절이 바뀌는 순간은 언제인가요?",
+      "새 출발이 두려운가요?",
+      "다시 만난다면, 무슨 말을 할거에요?",
+      "봄이면 떠오르는 그 사람",
+      "아직 말하지 못한 고백이 있나요?",
+      "꽃이 지는 순간을 기다린 적 있나요?",
+      "이번 봄은 몇 번째인가요?"
+    ];
+
+    function pickQuestion(){
+      const ALL = [...QUESTIONS, ...SPRING_QUESTIONS];
+      const q = ALL[Math.floor(Math.random() * ALL.length)];
+      const el = document.getElementById("todayQuestion");
+      el.innerText = q;
+
+      if (SPRING_QUESTIONS.includes(q)) el.classList.add("spring");
+      else el.classList.remove("spring");
+    }
+
+    pickQuestion();
+  </script>
+</body>
+</html>
